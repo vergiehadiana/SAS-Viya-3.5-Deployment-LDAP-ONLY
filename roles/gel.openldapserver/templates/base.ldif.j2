@@ -1,0 +1,37 @@
+dn: {{OLCSUFFIX}}
+objectClass: dcObject
+objectClass: organization
+o: {{CERT_O}}
+dc: {{DC}}
+
+dn: ou=users,{{OLCSUFFIX}}
+objectClass: organizationalUnit
+objectClass: top
+ou: users
+
+dn: ou=groups,{{OLCSUFFIX}}
+objectClass: organizationalUnit
+objectClass: top
+ou: groups
+
+
+{% if multitenancy | bool == true  %}
+{% for item in tenantlist %}
+dn: {{item.ou}}={{item.name}},{{OLCSUFFIX}}
+objectClass: {{item.objectClass1}}
+objectClass: {{item.objectClass2}}
+{{item.ou}}: {{item.name}}
+
+dn: ou=users,{{item.ou}}={{item.name}},{{OLCSUFFIX}}
+objectClass: organizationalUnit
+objectClass: top
+ou: users
+
+dn: ou=groups,{{item.ou}}={{item.name}},{{OLCSUFFIX}}
+objectClass: organizationalUnit
+objectClass: top
+ou: groups
+
+
+{% endfor %}
+{% endif %}

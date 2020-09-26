@@ -1,0 +1,13 @@
+---
+- include: openldapclient.yml
+- include: sssd.yml
+
+- name: "IMPORTANT INFORMATION:"
+  delegate_to: 127.0.0.1
+  run_once: true
+  debug:
+    msg:
+      - "A file called sitedefault.yml was generated for you"
+      - "If you want to use it in your Viya deployment, you can do the following:"
+      - "cp ./sitedefault.yml  ~/sas_viya_playbook/roles/consul/files/sitedefault.yml"
+      - "( assuming you have not yet deployed Viya )"

@@ -1,0 +1,91 @@
+---
+## you probably want to update these 2 variables.
+DC: va82demo     # the name of your OpenLDAP
+OLCROOTPW: "demopw"     # the password used for all LDAP accounts
+
+# the generated sitedefault will bind anonymously?
+  # keeping it as false by default for backwards compatibility reasons
+anonbind: false
+
+# do you want the OpenLDAP content to be compatible with multi-tenancy?
+  # keeping it as false by default for backwards compatibility reasons
+multitenancy: false
+
+# Hopefully you don't need to update this variable:
+#      this resolves to the openLDAP server's FQDN.
+#      you may need to override it if hostname -f is not the right hostname for you
+OpenLDAPFQDN: "{{hostvars[groups['openldapserver'][0]]['ansible_fqdn']}}"
+
+# if you are not happy with the following default users and groups, feel free to udpate.
+# If you want multitenancy, define the tenants in this list.
+tenantlist:
+  - { ou: ou, name: "provider" , objectClass1: "organizationalUnit" , objectClass2: "top"}
+  - { ou: ou, name: "stark"    , objectClass1: "organizationalUnit" , objectClass2: "top"}
+  - { ou: ou, name: "acme"     , objectClass1: "organizationalUnit" , objectClass2: "top"}
+
+# these are the Groups. You can leave tenant blank if you want.
+group_list:
+  - { group: sasusers      , gid: 100401, desc: SAS Users,           member: [viyademo01, viyademo02],            tenant: "groups"}
+  - { group: sasadmins     , gid: 100402, desc: SAS Admins,           member: [viyademo01, viyademo02],            tenant: "groups"}
+  - { group: marketing     , gid: 100001, desc: Marketing,           member: [viyademo01, viyademo02],            tenant: "groups"}
+  - { group: sales         , gid: 100002, desc: Sales    ,           member: [viyademo03,viyademo04, viyademo05], tenant: "groups"}
+  - { group: pro_group1    , gid: 100101, desc: Group 1 (provider) , member: [provuser01,provuser02],             tenant: "provider"}
+  - { group: pro_group2    , gid: 100102, desc: Group 2 (provider) , member: [provuser03,provuser04],             tenant: "provider"}
+  - { group: SuperHeroes   , gid: 100201, desc: With Super Powers  , member: [thor,hulk],                         tenant: "stark"}
+  - { group: RegularHumans , gid: 100202, desc: No Super Powers    , member: [tony,pepper],                       tenant: "stark"}
+  - { group: Characters    , gid: 100301, desc: Characters         , member: [wileecoyote,roadrunner,elmer],      tenant: "acme"}
+
+# user list
+## WARNING: THE PER-USER PASSWORDS HAVE NOT YET BEEN IMPLEMENTED
+user_list:
+# regular users
+  - { name: viyademo01, first: "Viya Demo", last: "User 01", uid: 100001, gid: 100001, pw: viyademo01, tenant: "users"}
+  - { name: viyademo02, first: "Viya Demo", last: "User 02", uid: 100002, gid: 100001, pw: viyademo02, tenant: " " }
+  - { name: viyademo03, first: "Viya Demo", last: "User 03", uid: 100003, gid: 100002, pw: viyademo03, tenant: ""}
+  - { name: viyademo04, first: "Viya Demo", last: "User 04", uid: 100004, gid: 100002, pw: viyademo04, tenant: "users"}
+  - { name: viyademo05, first: "Viya Demo", last: "User 05", uid: 100005, gid: 100002, pw: viyademo05, tenant: "users"}
+# in provider
+  - { name: provuser01, first: "Provider" , last: "User 01", uid: 100101, gid: 100101, pw: provuser01,    tenant: "provider"}
+  - { name: provuser02, first: "Provider" , last: "User 02", uid: 100102, gid: 100101, pw: provuser02,    tenant: "provider"}
+  - { name: provuser03, first: "Provider" , last: "User 03", uid: 100103, gid: 100102, pw: provuser03,    tenant: "provider"}
+  - { name: provuser04, first: "Provider" , last: "User 04", uid: 100104, gid: 100102, pw: provuser04,    tenant: "provider"}
+# tenant users
+  - { name: thor,       first: "Thor",      last: "Odinson", uid: 100201, gid: 100201, pw: thor,          tenant: "stark"}
+  - { name: hulk,       first: "Hulk",      last: "(The)"  , uid: 100202, gid: 100201, pw: hulk,          tenant: "stark"}
+  - { name: tony,       first: "Tony",      last: "Stark"  , uid: 100203, gid: 100202, pw: tony,          tenant: "stark"}
+  - { name: pepper,     first: "Pepper",    last: "Potts"  , uid: 100204, gid: 100202, pw: pepper,        tenant: "stark"}
+  - { name: wileecoyote,first: "Wile E.",   last: "Coyote" , uid: 100301, gid: 100301, pw: wileecoyote,   tenant: "acme"}
+  - { name: roadrunner ,first: "Road",      last: "Runner" , uid: 100302, gid: 100301, pw: roadrunner,    tenant: "acme"}
+  - { name: elmer      ,first: "Elmer",     last: "Fudd"   , uid: 100303, gid: 100301, pw: elmer,         tenant: "acme"}
+
+# where the home directories should exist/be created.
+homedir: /home
+
+## you probably should leave the rest of this alone
+OLCSUFFIX: "dc={{DC}},dc=com"
+OLCROOTDN: "cn=admin,{{OLCSUFFIX}}"
+CERTNAME: "{{DC}}"
+CERT_C: US
+CERT_ST: North Carolina
+CERT_L: Cary
+CERT_O: Demo_Org
+CERT_OU: Demo_OU
+CERT_LDAP: "{{OpenLDAPFQDN}}"
+
+CERT_STRING: "/C={{CERT_C}}/ST={{CERT_ST}}/L={{CERT_L}}/O={{CERT_O}}/OU={{CERT_OU}} LDAP/CN={{CERT_LDAP}}"
+SSSD_DOM: "{{DC}}.com"
+
+SSSD_BACKUP_FOL: /root/AuthConfig
+SSSD_BACKUP_FILE: "{{SSSD_BACKUP_FOL}}/authconfigBackup_SAS"
+
+LDIFLOC: /etc/openldap/ldif
+
+CERTLOC: /etc/pki/tls/certs
+PRIVATELOC: /etc/pki/tls/private
+CACERTLOC: /etc/openldap/cacerts
+
+tmp_folder_controller: "/tmp/gel.openldap.cont"
+tmp_folder_targets: "/tmp/gel.openldap.targs"
+
+## do a pause at the begginning if not using the --check option
+use_pause: true

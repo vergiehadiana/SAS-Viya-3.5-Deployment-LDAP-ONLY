@@ -1,0 +1,54 @@
+####################################################################
+#### DISCLAIMER                                                 ####
+####################################################################
+#### This Ansible Playbook is provided as-is, without warranty  ####
+#### of any kind, either express or implied, including, but not ####
+#### limited to, the implied warranties of merchantability,     ####
+#### fitness for a particular purpose, or non-infringement.     ####
+#### SAS Institute shall not be liable whatsoever for any       ####
+#### damages arising out of the use of this documentation and   ####
+#### code, including any direct, indirect, or consequential     ####
+#### damages. SAS Institute reserves the right to alter or      ####
+#### abandon use of this documentation and code at any time.    ####
+#### In addition, SAS Institute will provide no support for the ####
+#### materials contained herein.                                ####
+####################################################################
+#  This playbook:
+#      was NOT thoroughly tested
+#      is NOT part of Viya
+#  The customer should provide the required LDAP and perform the required Authentication work on the Viya server(s)
+
+#####################################################################
+## Enter your hosts definitions here!
+## you can have one or more hosts
+#####################################################################
+apple     ansible_connection=local
+#orange    ansible_host=server1.customer.com
+#cherry    ansible_host=server2.customer.com
+#raspberry ansible_host=server3.customer.com
+#peach     ansible_host=server4.customer.com  ansible_ssh_user=root
+
+#####################################################################
+## This is how you tell the playbook where to install OpenLDAP SERVER
+## there should be only one nickname in here
+#####################################################################
+[openldapserver]
+apple
+
+#####################################################################
+## This/these servers will be configured to authenticate against the openldap server
+## you may or may not want the same host here as in the openldapserver group
+## this host group can have one or more machines in it
+#####################################################################
+[openldapclients]
+apple
+#orange
+#cherry
+#raspberry
+
+#####################################################################
+## Don't touch the stuff below
+#####################################################################
+[openldapall:children]
+openldapserver
+openldapclients

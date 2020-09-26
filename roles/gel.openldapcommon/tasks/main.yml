@@ -1,0 +1,36 @@
+---
+- name: Add the OS specific varibles
+  include_vars: "group_vars/{{ansible_distribution}}{{ansible_distribution_major_version}}.yml"
+
+- debug: var=OLCSUFFIX
+- debug: var=OLCROOTDN
+- debug: var=OLCROOTPW
+
+- name: ensure {{tmp_folder_targets}} folder exists
+  file:
+    path: "{{tmp_folder_targets}}"
+    state: directory
+    mode: 0777
+
+- name: ensure {{tmp_folder_controller}} folder exists
+  become: yes
+  become_user: root
+  file:
+    path: "{{tmp_folder_controller}}"
+    state: directory
+    mode: 0777
+  delegate_to: 127.0.0.1
+
+- name: Install wget and the utility needed for the crc32 work
+  yum:
+    pkg: "{{ item }}"
+    state: present
+  with_items:
+     - wget
+     - perl-Archive-Zip
+
+- name: Install libselinux-python for RHEL 6
+  yum:
+    name: libselinux-python
+    state: present
+  when: ansible_distribution_major_version|int == 6

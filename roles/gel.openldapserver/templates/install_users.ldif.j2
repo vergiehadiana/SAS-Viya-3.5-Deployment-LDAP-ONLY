@@ -1,0 +1,56 @@
+{% for item in user_list %}
+
+{% if item.tenant in ("users","", " ")  or item.tenant is not defined or multitenancy | bool == false %}
+# This is a regular user under the normal "users"
+dn: uid={{item.name}},ou=users,{{OLCSUFFIX}}
+{% else %}
+# This is a user under a tenant #
+dn: uid={{item.name}},ou=users,ou={{item.tenant}},{{OLCSUFFIX}}
+{% endif %}
+cn: {{item.name}}
+givenName: {{item.first}}
+sn: {{item.last}}
+objectClass: top
+objectclass: inetorgperson
+objectClass: organizationalPerson
+objectClass: posixaccount
+loginshell: /bin/bash
+uidNumber: {{item.uid}}
+gidNumber: {{item.gid}}
+homedirectory: {{homedir}}/{{item.name}}
+userPassword: {{OLCROOTPW_ENC.stdout}}
+mail: {{item.name}}@{{CERT_LDAP}}
+l: {{CERT_L}}
+o: {{CERT_O}}
+displayName: {{item.first}} {{item.last}}
+
+{% endfor %}
+
+
+{% for group in group_list %}
+
+{% if group.tenant in ("groups","", " ")  or group.tenant is not defined or multitenancy | bool == false %}
+# This is a regular group under the normal "groups"
+dn: cn={{group.group}},ou=groups,{{OLCSUFFIX}}
+{% else %}
+# This is a group under a tenant #
+dn: cn={{group.group}},ou=groups,ou={{group.tenant}},{{OLCSUFFIX}}
+{% endif %}
+objectClass: groupofnames
+objectClass: top
+objectClass: extensibleObject
+displayName: {{group.desc}}
+name: {{group.group}}
+gidNumber: {{group.gid}}
+{% for member in group['member'] %}memberUid: {{member}}
+{% endfor %}
+cn: {{group.group}}
+{% if group.tenant in ("groups","", " ")  or group.tenant is not defined or multitenancy | bool == false %}
+{% for member in group['member'] %}member: uid={{member}},ou=users,{{OLCSUFFIX}}
+{% endfor %}
+{% else %}
+{% for member in group['member'] %}member: uid={{member}},ou=users,ou={{group.tenant}},{{OLCSUFFIX}}
+{% endfor %}
+{% endif %}
+
+{% endfor %}

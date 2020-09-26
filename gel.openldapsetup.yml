@@ -1,0 +1,57 @@
+---
+####################################################################
+#### gel.openldapsetup.yml                                      ####
+####                                                            ####
+####################################################################
+#### DISCLAIMER                                                 ####
+####################################################################
+#### This Ansible Playbook is provided as-is, without warranty  ####
+#### of any kind, either express or implied, including, but not ####
+#### limited to, the implied warranties of merchantability,     ####
+#### fitness for a particular purpose, or non-infringement.     ####
+#### SAS Institute shall not be liable whatsoever for any       ####
+#### damages arising out of the use of this documentation and   ####
+#### code, including any direct, indirect, or consequential     ####
+#### damages. SAS Institute reserves the right to alter or      ####
+#### abandon use of this documentation and code at any time.    ####
+#### In addition, SAS Institute will provide no support for the ####
+#### materials contained herein.                                ####
+####################################################################
+
+# start the plays
+- hosts: localhost
+  tasks:
+
+
+  - name: "Here are some potential ways of executing this playbook:"
+    debug:
+      msg:
+        - "To completely uninstall OpenLDAP:       ansible-playbook gel.openldapremove.yml                          "
+        - "For an anonymous bind sitedefault.yml:  ansible-playbook gel.openldapsetup.yml -e 'anonbind=true'        "
+        - "For a multi-tenancy LDAP content:       ansible-playbook gel.openldapsetup.yml -e 'multitenancy=true'    "
+
+  - name: "Pausing long enough for you to read the message above."
+    pause:
+      seconds: 30
+    when: use_pause == True
+
+- name: Perform common tasks on all machines
+  hosts: openldapall
+  become: yes
+  become_user: root
+  roles:
+    - { role: gel.openldapcommon, tags: ["common"] }
+
+- name: Install OpenLDAP Server on a single machine
+  hosts: openldapserver
+  become: yes
+  become_user: root
+  roles:
+    - { role: gel.openldapserver, tags: ["server"] }
+
+- name: Install KDC/LDAP Client on one or more machines
+  hosts: openldapclients
+  become: yes
+  become_user: root
+  roles:
+    - { role: gel.openldapclients, tags: ["client"] }

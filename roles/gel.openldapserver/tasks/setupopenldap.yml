@@ -1,0 +1,181 @@
+---
+- name: Install openldap server packages
+  yum:
+    pkg: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+     - openldap-servers
+     - openldap-clients
+
+- name: force a re-install (needed in some cases)
+  become: yes
+  shell: |
+    yum-complete-transaction
+    yum -y reinstall openldap-servers
+  ignore_errors: yes
+  register: yumreinstall
+- debug: var=yumreinstall
+
+
+
+
+- name: encrypt the password
+  shell: "slappasswd -s {{OLCROOTPW}}"
+  register: OLCROOTPW_ENC
+  tags:
+    - always
+
+
+- name: copy db_config
+  shell: cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+  args:
+    creates: /var/lib/ldap/DB_CONFIG
+
+- name: apply permissions
+  shell: chown -R ldap:ldap /var/lib/ldap
+
+- name: edit config.ldif
+  lineinfile:
+    dest: /etc/openldap/slapd.d/cn=config.ldif
+    regexp: "^olcTLS.*"
+    state: absent
+    backup: yes
+  tags: 
+    - ldifs
+
+- name: edit hdb.ldif
+  lineinfile:
+    dest: /etc/openldap/slapd.d/cn=config/{{olcDatabasedb}}.ldif
+    regexp: "^olcSuffix.*"
+    line: "olcSuffix: {{OLCSUFFIX}}"
+    state: present
+    backup: yes
+  tags: 
+    - ldifs
+
+- name: edit hdb.ldif
+  lineinfile:
+    dest: /etc/openldap/slapd.d/cn=config/{{olcDatabasedb}}.ldif
+    regexp: "^olcRootDN.*"
+    line: "olcRootDN: {{OLCROOTDN}}"
+    state: present
+    backup: yes
+  tags: 
+    - ldifs
+
+- name: edit hdb.ldif
+  lineinfile:
+    dest: /etc/openldap/slapd.d/cn=config/{{olcDatabasedb}}.ldif
+    regexp: "^olcRootPW.*"
+    line: "olcRootPW: {{OLCROOTPW_ENC.stdout}}"
+    state: present
+    backup: yes
+  tags: 
+    - ldifs
+
+- name: show me the result
+  shell: cat /etc/openldap/slapd.d/cn=config/{{olcDatabasedb}}.ldif
+  register: result1
+- debug: var=result1.stdout_lines
+
+- name: edit monitor.ldif
+  replace:
+    dest: /etc/openldap/slapd.d/cn=config/olcDatabase={1}monitor.ldif
+    regexp: 'read\ by\ dn\.base\=\".*\"\ read'
+    replace: "read by dn.base=\"{{OLCSUFFIX}}\" read"
+    backup: yes
+  tags: 
+    - ldifs
+
+- name: fix the checksums
+  shell: | 
+    # Install dependencies!
+    # yum install perl-Archive-Zip -y
+    
+    # Update CRC32 
+    LDIF_FILE=/etc/openldap/slapd.d/cn=config.ldif
+    #cat $LDIF_FILE
+    cat $LDIF_FILE | tail -n +3 > {{tmp_folder_targets}}/smaller.ldif
+    CRC_VAL="# CRC32 $(/usr/bin/crc32 {{tmp_folder_targets}}/smaller.ldif)"
+    SED_RPL="'0,/# CRC32 .*/s//$CRC_VAL/g'"
+    eval "sed -i $SED_RPL $LDIF_FILE"
+    rm {{tmp_folder_targets}}/smaller.ldif
+    #cat $LDIF_FILE
+    
+    LDIF_FILE=/etc/openldap/slapd.d/cn=config.ldif
+    #cat $LDIF_FILE
+    cat $LDIF_FILE | tail -n +3 > {{tmp_folder_targets}}/smaller.ldif
+    CRC_VAL="# CRC32 $(/usr/bin/crc32 {{tmp_folder_targets}}/smaller.ldif)"
+    SED_RPL="'0,/# CRC32 .*/s//$CRC_VAL/g'"
+    eval "sed -i $SED_RPL $LDIF_FILE"
+    rm {{tmp_folder_targets}}/smaller.ldif
+    #cat $LDIF_FILE
+
+    LDIF_FILE=/etc/openldap/slapd.d/cn=config/{{olcDatabasedb}}.ldif
+    #cat $LDIF_FILE
+    cat $LDIF_FILE | tail -n +3 > {{tmp_folder_targets}}/smaller.ldif
+    CRC_VAL="# CRC32 $(/usr/bin/crc32 {{tmp_folder_targets}}/smaller.ldif)"
+    SED_RPL="'0,/# CRC32 .*/s//$CRC_VAL/g'"
+    eval "sed -i $SED_RPL $LDIF_FILE"
+    rm {{tmp_folder_targets}}/smaller.ldif
+    #cat $LDIF_FILE
+    
+    LDIF_FILE=/etc/openldap/slapd.d/cn=config/olcDatabase={1}monitor.ldif
+    #cat $LDIF_FILE
+    cat $LDIF_FILE | tail -n +3 > {{tmp_folder_targets}}/smaller.ldif
+    CRC_VAL="# CRC32 $(/usr/bin/crc32 {{tmp_folder_targets}}/smaller.ldif)"
+    SED_RPL="'0,/# CRC32 .*/s//$CRC_VAL/g'"
+    eval "sed -i $SED_RPL $LDIF_FILE"
+    rm {{tmp_folder_targets}}/smaller.ldif
+  register: checksum_fix
+  tags: 
+    - ldifs
+- debug: var=checksum_fix
+  tags: 
+    - ldifs
+  
+- name: run slaptest
+  shell: |
+    slaptest -u
+  register: slaptest
+  tags: 
+    - ldifs
+  failed_when:  "slaptest.stderr is defined and 'checksum error' in slaptest.stderr"
+  
+- debug: var=slaptest
+  tags: 
+    - ldifs
+
+- name: Start and enable slapd
+  service:
+    name: slapd
+    state: started
+    enabled: yes
+  ignore_errors: yes
+
+- name: check that port is listening
+  shell: netstat -lt | grep ldap
+  register: ldapport
+- debug: var=ldapport
+- fail: msg="ldap does not seem to be running"
+  when: ldapport.rc != 0
+
+
+- name: add the following schemas (cosine)
+  shell: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+  register: cosine
+  ignore_errors: yes
+- debug: var=cosine
+
+- name: add the following schemas (nis)
+  shell: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif
+  register: nis
+  ignore_errors: yes
+- debug: var=nis
+
+- name: add the following schemas (ldif)
+  shell: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+  register: inetorgperson
+  ignore_errors: yes
+- debug: var=inetorgperson
